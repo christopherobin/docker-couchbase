@@ -5,7 +5,7 @@ A Docker container for Couchbase Community that auto-configures the cluster base
 # Quick Start
 
 ```bash
-$ docker run -d -e CB_RAMSIZE=256 --name couchbase -p 8091-8094:8091-8094 -p 11210:11210 crobin:couchbase-community-4.5.0
+$ docker run -d -e CB_RAMSIZE=256 --name couchbase -p 8091-8094:8091-8094 -p 11210:11210 crobin/couchbase-community
 $ docker logs -f couchbase
 * Starting couchbase ..... started !
 * Creating couchbase cluster

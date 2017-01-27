@@ -1,4 +1,4 @@
-FROM couchbase:community-4.5.0
+FROM couchbase:community
 
 ADD setup.sh /bin/start-cb.sh
 
