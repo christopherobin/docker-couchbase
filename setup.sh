@@ -1,6 +1,8 @@
 #!/bin/bash
 # This is the init file for the couchbase cluster, it is run everytime the cb container is started
 
+echo "starting" > /tmp/status
+
 [[ ! -f /.cb.pwd ]] && openssl rand -hex 8 2>/dev/null 1>/.cb.pwd
 
 RANDOM_PASSWORD="$( cat /.cb.pwd )"
@@ -55,6 +57,8 @@ fi
 # Trap and forward term/int from the docker env to cb
 trap 'kill -TERM $CB_PID' TERM
 trap 'kill -INT $CB_PID' INT
+
+echo "ready" > /tmp/status
 
 echo "* Setup finished -- Web UI available at http://<ip>:8091"
 wait $CB_PID
