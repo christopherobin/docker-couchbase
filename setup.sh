@@ -9,11 +9,11 @@ RANDOM_PASSWORD="$( cat /.cb.pwd )"
 
 CB_ADMIN_USER="${CB_ADMIN_USER:-admin}"
 CB_ADMIN_PWD="${CB_ADMIN_PWD:-$RANDOM_PASSWORD}"
-CB_SERVICES="${CB_SERVICES:-data,index,query,fts}"
+CB_SERVICES="${CB_SERVICES:-kv,index,n1ql,fts}"
 CB_RAMSIZE="${CB_RAMSIZE:-512}"
 CB_INDEX_RAMSIZE="${CB_INDEX_RAMSIZE:-256}"
 CB_FTS_RAMSIZE="${CB_FTS_RAMSIZE:-256}"
-CB_INDEX_STORAGE="${CB_INDEX_STORAGE:-default}"
+CB_INDEX_STORAGE="${CB_INDEX_STORAGE:-forestdb}"
 
 # Starts couchbase in the background
 echo -n "* Starting couchbase "
@@ -36,21 +36,34 @@ if ! couchbase-cli server-list -c 127.0.0.1:8091 -u "${CB_ADMIN_USER}" -p "${CB_
     fi
 
     # if only setting up a data node, remove some args
-    if [[ "$CB_SERVICES" == "data" ]]; then
-        couchbase-cli cluster-init -c 127.0.0.1:8091 -u admin -p "${CB_ADMIN_PWD}" \
-            "--cluster-username=${CB_ADMIN_USER}" \
-            "--cluster-password=${CB_ADMIN_PWD}" \
-            "--services=${CB_SERVICES}" \
-            "--cluster-ramsize=${CB_RAMSIZE}"
+    if [[ "$CB_SERVICES" == "kv" ]]; then
+        echo "* Setting memory quota"
+        curl -sS -X POST http://127.0.0.1:8091/pools/default \
+            -d "memoryQuota=${CB_RAMSIZE}"
+        echo "* Setting up services"
+        curl -sS -X POST http://127.0.0.1:8091/node/controller/setupServices \
+            -d "services=${CB_SERVICES}"
+        echo "* Setting up storage"
+        curl -sS -X POST http://127.0.0.1:8091/settings/indexes \
+            -d "storageMode=forestdb" | python -c 'import json,sys; print("\n".join(["  %s: %s" % (k, v) for k, v in json.load(sys.stdin).items()]))'
+        echo "* Setting up credentials and port"
+        curl -sS -X POST http://127.0.0.1:8091/settings/web \
+            -d "username=${CB_ADMIN_USER}&password=${CB_ADMIN_PWD}&port=8091&" | python -c 'import json,sys; print("\n".join(["  %s: %s" % (k, v) for k, v in json.load(sys.stdin).items()]))'
     else
-        couchbase-cli cluster-init -c 127.0.0.1:8091 -u admin -p "${CB_ADMIN_PWD}" \
-            "--cluster-username=${CB_ADMIN_USER}" \
-            "--cluster-password=${CB_ADMIN_PWD}" \
-            "--services=${CB_SERVICES}" \
-            "--cluster-ramsize=${CB_RAMSIZE}" \
-            "--cluster-index-ramsize=${CB_INDEX_RAMSIZE}" \
-            "--cluster-fts-ramsize=${CB_FTS_RAMSIZE}" \
-            "--index-storage-setting=${CB_INDEX_STORAGE}"
+        echo "* Setting memory quota"
+        curl -sS -X POST http://127.0.0.1:8091/pools/default \
+            -d "memoryQuota=${CB_RAMSIZE}" \
+            -d "indexMemoryQuota=${CB_INDEX_RAMSIZE}" \
+            -d "ftsMemoryQuota=${CB_FTS_RAMSIZE}"
+        echo "* Setting up services"
+        curl -sS -X POST http://127.0.0.1:8091/node/controller/setupServices \
+            -d "services=${CB_SERVICES}"
+        echo "* Setting up storage"
+        curl -sS -X POST http://127.0.0.1:8091/settings/indexes \
+            -d "storageMode=forestdb" | python -c 'import json,sys; print("\n".join(["  %s: %s" % (k, v) for k, v in json.load(sys.stdin).items()]))'
+        echo "* Setting up credentials and port"
+        curl -sS -X POST http://127.0.0.1:8091/settings/web \
+            -d "username=${CB_ADMIN_USER}&password=${CB_ADMIN_PWD}&port=8091&" | python -c 'import json,sys; print("\n".join(["  %s: %s" % (k, v) for k, v in json.load(sys.stdin).items()]))'
     fi
 fi
 
